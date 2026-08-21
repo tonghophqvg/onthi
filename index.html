@@ -292,18 +292,14 @@ window.onerror=function(msg,src,line,col,err){
       </div>
     </div>
     <div class="card">
-      <div class="card-h">Ch&#7885;n l&#297;nh v&#7921;c thi</div>
-      <div style="margin-bottom:12px">
-        <label style="font-size:13px;color:#666;display:block;margin-bottom:6px">L&#297;nh v&#7921;c</label>
-        <select id="exam-domain" onchange="onDomainChange()" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:16px;background:#fff"></select>
-      </div>
+      <div class="card-h">C&#7845;u h&#236;nh &#273;&#7873; thi</div>
       <div style="margin-bottom:8px">
-        <label style="font-size:13px;color:#666;display:block;margin-bottom:6px">S&#7889; c&#226;u h&#7887;i m&#7895;i &#273;&#7873;</label>
-        <input type="number" id="exam-qcount" value="5" min="1" max="50" oninput="updateFoot()" style="width:90px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:16px;text-align:center"/>
-        <span style="font-size:12px;color:#aaa;margin-left:8px" id="pool-info"></span>
+        <label style="font-size:13px;color:#666;display:block;margin-bottom:6px">S&#7889; c&#226;u m&#7895;i l&#297;nh v&#7921;c</label>
+        <input type="number" id="exam-perdomain" value="5" min="1" max="30" oninput="updateFoot()" style="width:90px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:16px;text-align:center"/>
+        <span style="font-size:13px;color:#888;margin-left:10px" id="pool-info"></span>
       </div>
       <div class="foot">
-        <div class="foot-info">&#272;&#7873; thi: <strong id="ftotal">5</strong> c&#226;u &nbsp;|&nbsp; TG: <strong id="ftime">30</strong> ph&#250;t &nbsp;|&nbsp; &#272;&#7841;t: <strong>&#8805;50%</strong></div>
+        <div class="foot-info">&#272;&#7873; thi: <strong id="ftotal">50</strong> c&#226;u &nbsp;|&nbsp; TG: <strong id="ftime">30</strong> ph&#250;t &nbsp;|&nbsp; &#272;&#7841;t: <strong>&#8805;50%</strong></div>
         <div style="display:flex;gap:8px">
           <button class="btn-s" onclick="saveConfig()">L&#432;u c&#7845;u h&#236;nh</button>
           <button class="btn-go" onclick="startExam()">Thi th&#7917; ngay</button>
@@ -430,7 +426,7 @@ window.onerror=function(msg,src,line,col,err){
     <div class="card">
       <div class="card-h">L&#297;nh v&#7921;c thi (6/12 &#8212; s&#7869; b&#7893; sung th&#234;m)</div>
       <table class="tbl" style="table-layout:auto">
-        <thead><tr><th style="width:28px">#</th><th>L&#297;nh v&#7921;c</th><th style="width:65px">S&#7889; c&#226;u</th><th style="width:110px">Tr&#7841;ng th&#225;i thi</th></tr></thead>
+        <thead><tr><th style="width:28px">#</th><th>L&#297;nh v&#7921;c</th><th style="width:65px">S&#7889; c&#226;u</th><th style="width:100px">L&#7845;y v&#224;o &#273;&#7873;</th></tr></thead>
         <tbody id="domadmin"></tbody>
       </table>
     </div>
@@ -515,7 +511,7 @@ function loadData(){
 
 
 // ── State ──
-let curUser=null,isAdmin=false,examTime=45,examDomain=0,examCount=5;
+let curUser=null,isAdmin=false,examTime=45,examPerDomain=5;
 let examQs=[],curQ=0,answers={},timerInv=null,timeLeft=0,lastResult=null;
 const allHistory={};
 
@@ -614,10 +610,9 @@ function updateMyStats(){
   }
 }
 function renderStaffCfg(){
-  const dn=DOMAINS[examDomain]?DOMAINS[examDomain].name:'';
+  const total=examPerDomain*DOMAINS.length;
   document.getElementById('staff-cfg').innerHTML=
-    '<div style="font-size:15px"><span style="color:#666">L\u0129nh v\u1ef1c thi:</span> <strong style="color:#1a3a6b">'+dn+'</strong></div>'+
-    '<div style="margin-top:6px"><span style="color:#666">S\u1ed1 c\u00e2u:</span> <strong>'+examCount+' c\u00e2u</strong></div>'+
+    '<div style="font-size:15px"><span style="color:#666">\u0110\u1ec1 thi:</span> <strong style="color:#1a3a6b">'+total+' c\u00e2u</strong> <span style="color:#888">('+examPerDomain+' c\u00e2u \u00d7 '+DOMAINS.length+' l\u0129nh v\u1ef1c)</span></div>'+
     '<div style="margin-top:6px;color:#666">\u23f1 Th\u1eddi gian: <strong>'+examTime+' ph\u00fat</strong> &nbsp;|\u00a0 \u2705 \u0110i\u1ec1u ki\u1ec7n \u0111\u1ea1t: <strong>\u226550%</strong></div>';
 }
 
@@ -626,7 +621,7 @@ function showAdminHome(){
   document.getElementById('staff-home').style.display='none';
   document.getElementById('admin-home').style.display='';
   ['sec-exam','sec-result','sec-review'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
-  buildDomainSelect();
+  buildExamConfig();
 }
 function setTime(t){
   ['t30','t45','t60','t90','tcus'].forEach(id=>{const e=document.getElementById(id);if(e)e.className='tbtn';});
@@ -635,66 +630,51 @@ function setTime(t){
   document.getElementById('custom-row').style.display=t===0?'':'none';
   if(t!==0){examTime=t;updateFoot();}
 }
-function buildDomainSelect(){
-  const sel=document.getElementById('exam-domain');if(!sel)return;
-  sel.innerHTML='';
-  DOMAINS.forEach((d,i)=>{
-    const o=document.createElement('option');
-    o.value=i; o.textContent=(i+1)+'. '+d.name+' ('+d.count+' c\u00e2u)';
-    if(i===examDomain)o.selected=true;
-    sel.appendChild(o);
-  });
-  const qc=document.getElementById('exam-qcount');
-  if(qc)qc.value=examCount;
-  onDomainChange();
-}
-function onDomainChange(){
-  const sel=document.getElementById('exam-domain');
-  if(sel)examDomain=parseInt(sel.value)||0;
-  const pool=DOMAINS[examDomain]?DOMAINS[examDomain].count:0;
-  const info=document.getElementById('pool-info');
-  if(info)info.textContent='(l\u0129nh v\u1ef1c c\u00f3 '+pool+' c\u00e2u)';
-  const qc=document.getElementById('exam-qcount');
-  if(qc){qc.max=pool; if(parseInt(qc.value)>pool)qc.value=pool;}
+function buildExamConfig(){
+  const inp=document.getElementById('exam-perdomain');
+  if(inp)inp.value=examPerDomain;
   updateFoot();
 }
 function updateFoot(){
-  const qc=document.getElementById('exam-qcount');
-  if(qc)examCount=parseInt(qc.value)||5;
+  const inp=document.getElementById('exam-perdomain');
+  if(inp)examPerDomain=parseInt(inp.value)||5;
+  const total=examPerDomain*DOMAINS.length;
   const ft=document.getElementById('ftotal');
-  if(ft)ft.textContent=examCount;
+  if(ft)ft.textContent=total;
+  const info=document.getElementById('pool-info');
+  if(info)info.textContent='\u00d7 '+DOMAINS.length+' l\u0129nh v\u1ef1c = '+total+' c\u00e2u/\u0111\u1ec1';
   const cm=document.getElementById('cmin');
   if(cm&&document.getElementById('tcus').className.includes('on'))examTime=parseInt(cm.value)||30;
   const fti=document.getElementById('ftime');
   if(fti)fti.textContent=examTime;
 }
 function saveConfig(){
-  const sel=document.getElementById('exam-domain');
-  if(sel)examDomain=parseInt(sel.value)||0;
-  const qc=document.getElementById('exam-qcount');
-  if(qc)examCount=parseInt(qc.value)||5;
+  const inp=document.getElementById('exam-perdomain');
+  if(inp)examPerDomain=parseInt(inp.value)||5;
   const cm=document.getElementById('cmin');
   if(document.getElementById('tcus').className.includes('on'))examTime=parseInt(cm?.value)||30;
-  alert('\u2705 \u0110\u00e3 l\u01b0u c\u1ea5u h\u00ecnh!\nL\u0129nh v\u1ef1c: '+DOMAINS[examDomain].name+'\nS\u1ed1 c\u00e2u: '+examCount+'\nC\u00f4ng ch\u1ee9c s\u1ebd thi theo c\u1ea5u h\u00ecnh n\u00e0y.');
+  const total=examPerDomain*DOMAINS.length;
+  alert('\u2705 \u0110\u00e3 l\u01b0u c\u1ea5u h\u00ecnh!\nM\u1ed7i \u0111\u1ec1: '+examPerDomain+' c\u00e2u \u00d7 '+DOMAINS.length+' l\u0129nh v\u1ef1c = '+total+' c\u00e2u.\nC\u00f4ng ch\u1ee9c s\u1ebd thi theo c\u1ea5u h\u00ecnh n\u00e0y.');
 }
 
 // ── EXAM ──
 function startExam(){
-  examQs=[];
-  // Nếu admin đang ở màn cấu hình, lấy lựa chọn hiện tại trên giao diện
+  // Lấy lựa chọn hiện tại nếu admin đang ở màn cấu hình
   if(isAdmin){
-    const sel=document.getElementById('exam-domain');
-    if(sel)examDomain=parseInt(sel.value)||0;
-    const qc=document.getElementById('exam-qcount');
-    if(qc)examCount=parseInt(qc.value)||5;
+    const inp=document.getElementById('exam-perdomain');
+    if(inp)examPerDomain=parseInt(inp.value)||5;
     const cm=document.getElementById('cmin');
     if(document.getElementById('tcus').className.includes('on'))examTime=parseInt(cm?.value)||30;
   }
-  // Chỉ lấy câu từ ĐÚNG 1 lĩnh vực đã chọn
-  const pool=ALL_QUESTIONS.filter(q=>q.d===examDomain);
-  const shuffled=[...pool].sort(()=>Math.random()-.5);
-  examQs=shuffled.slice(0,Math.min(examCount,pool.length));
-  if(examQs.length===0){alert('L\u0129nh v\u1ef1c n\u00e0y ch\u01b0a c\u00f3 c\u00e2u h\u1ecfi!');return;}
+  // Mỗi lĩnh vực lấy examPerDomain câu ngẫu nhiên -> gộp thành đề
+  examQs=[];
+  DOMAINS.forEach((d,i)=>{
+    const pool=ALL_QUESTIONS.filter(q=>q.d===i);
+    const shuffled=[...pool].sort(()=>Math.random()-.5);
+    examQs.push(...shuffled.slice(0,Math.min(examPerDomain,pool.length)));
+  });
+  if(examQs.length===0){alert('Ch\u01b0a c\u00f3 c\u00e2u h\u1ecfi!');return;}
+  // Trộn toàn bộ đề để câu các lĩnh vực xen kẽ
   examQs.sort(()=>Math.random()-.5);
   answers={};curQ=0;
   timeLeft=examTime*60;
@@ -958,7 +938,7 @@ function btab(t){
 function buildDomainAdminTable(){
   document.getElementById('domadmin').innerHTML=DOMAINS.map((d,i)=>
     '<tr><td>'+(i+1)+'</td><td>'+d.name+'</td><td>'+d.count+'</td>'+
-    '<td>'+(i===examDomain?'<span class="bdg bg">\u0110ang ch\u1ecdn thi</span>':'<span class="bdg bb" style="opacity:.5">\u2014</span>')+'</td></tr>').join('');
+    '<td><span class="bdg bg">'+examPerDomain+' c\u00e2u/\u0111\u1ec1</span></td></tr>').join('');
 }
 function buildAccountTable(){
   document.getElementById('acctbody').innerHTML=USERS.filter(u=>!u.admin).map((u,i)=>
